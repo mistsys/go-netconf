@@ -9,9 +9,11 @@ package netconf
 import (
 	"bytes"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"io"
 	"regexp"
+	"time"
 )
 
 const (
@@ -23,6 +25,8 @@ const (
 var DefaultCapabilities = []string{
 	"urn:ietf:params:netconf:base:1.0",
 }
+
+var ErrReadTimeout = errors.New("Read timed out")
 
 // HelloMessage is used when bringing up a NETCONF session
 type HelloMessage struct {
@@ -39,10 +43,18 @@ type Transport interface {
 	Close() error
 	ReceiveHello() (*HelloMessage, error)
 	SendHello(*HelloMessage) error
+	SetReadTimeout(time.Duration)
 }
 
 type transportBasicIO struct {
 	io.ReadWriteCloser
+	readTimeout time.Duration
+	timedOut    bool
+}
+
+type readResult struct {
+	n   int
+	err error
 }
 
 // Sends a well formated NETCONF rpc message as a slice of bytes adding on the
@@ -74,6 +86,32 @@ func (t *transportBasicIO) SendHello(hello *HelloMessage) error {
 	return err
 }
 
+func (t *transportBasicIO) Read(p []byte) (n int, err error) {
+	if t.readTimeout == 0 {
+		return t.ReadWriteCloser.Read(p)
+	}
+	if t.timedOut {
+		return 0, ErrReadTimeout
+	}
+	timer := time.NewTimer(t.readTimeout)
+	c := make(chan readResult, 1)
+
+	go func() {
+		n, err := t.ReadWriteCloser.Read(p)
+		timer.Stop()
+		c <- readResult{n: n, err: err}
+	}()
+
+	select {
+	case data := <-c:
+		return data.n, data.err
+	case <-timer.C:
+		t.timedOut = true
+		t.Close()
+		return 0, ErrReadTimeout
+	}
+}
+
 func (t *transportBasicIO) ReceiveHello() (*HelloMessage, error) {
 	hello := new(HelloMessage)
 
@@ -84,6 +122,10 @@ func (t *transportBasicIO) ReceiveHello() (*HelloMessage, error) {
 
 	err = xml.Unmarshal(val, hello)
 	return hello, err
+}
+
+func (t *transportBasicIO) SetReadTimeout(duration time.Duration) {
+	t.readTimeout = duration
 }
 
 func (t *transportBasicIO) Writeln(b []byte) (int, error) {

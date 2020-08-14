@@ -12,6 +12,7 @@ import (
 	"io"
 	"regexp"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -205,5 +206,14 @@ func TestWaitForBytesEmpty(t *testing.T) {
 	_, err := tt.WaitForBytes([]byte("Test"))
 	if err == nil {
 		t.Errorf("WaitForBytes should error on empty input!")
+	}
+}
+
+func TestReadTimeout(t *testing.T) {
+	tt, _ := newTransportTest(loginText)
+	tt.SetReadTimeout(time.Nanosecond)
+	_, err := tt.WaitForBytes([]byte("Password"))
+	if err != ErrReadTimeout {
+		t.Errorf("error should be read timeout error, but got %v", err)
 	}
 }
