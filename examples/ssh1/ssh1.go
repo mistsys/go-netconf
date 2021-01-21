@@ -11,7 +11,7 @@ import (
 	"log"
 
 	"github.com/mistsys/go-netconf/netconf"
-	"golang.org/x/crypto/ssh"
+	"github.com/mistsys/crypto/ssh"
 )
 
 func main() {

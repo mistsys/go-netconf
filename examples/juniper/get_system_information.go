@@ -16,8 +16,8 @@ import (
 	"syscall"
 
 	"github.com/mistsys/go-netconf/netconf"
-	"golang.org/x/crypto/ssh"
-	"golang.org/x/crypto/ssh/terminal"
+	"github.com/mistsys/crypto/ssh"
+	"github.com/mistsys/crypto/ssh/terminal"
 )
 
 var (

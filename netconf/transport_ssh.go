@@ -16,8 +16,8 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/crypto/ssh"
-	"golang.org/x/crypto/ssh/agent"
+	"github.com/mistsys/crypto/ssh"
+	"github.com/mistsys/crypto/ssh/agent"
 )
 
 const (
